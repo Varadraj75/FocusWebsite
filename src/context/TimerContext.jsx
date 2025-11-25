@@ -24,7 +24,9 @@ export function TimerProvider({ children }) {
             title: sub,
             duration: 0, // Total accumulated seconds
             isRunning: false,
-            lastTick: null // Timestamp of last update
+            startTime: null, // Timestamp when timer started
+            startDuration: 0, // Duration at the moment of start
+            lastTick: null // Timestamp of last update (for logging)
         }));
     });
 
@@ -35,6 +37,8 @@ export function TimerProvider({ children }) {
         return {
             duration: 0,
             isRunning: false,
+            startTime: null,
+            startDuration: 0,
             lastTick: null
         };
     });
@@ -66,40 +70,59 @@ export function TimerProvider({ children }) {
             const now = Date.now();
 
             // Check Focus Timers
-            // We iterate to find the running one.
-            // Note: We use functional state update to ensure we have latest state without dependency issues if we were to use refs for everything.
-            // But we are using refs for reading.
-
             const activeTimerIndex = timersRef.current.findIndex(t => t.isRunning);
             if (activeTimerIndex !== -1) {
                 const activeTimer = timersRef.current[activeTimerIndex];
 
-                logTime(activeTimer.title, 1, 'study');
+                // Calculate elapsed time since start
+                // duration = startDuration + (now - startTime)
+                const elapsedSinceStart = Math.floor((now - activeTimer.startTime) / 1000);
+                const newDuration = activeTimer.startDuration + elapsedSinceStart;
 
-                setTimers(prev => {
-                    const newTimers = [...prev];
-                    // Safety check to ensure we found it (though ref should match)
-                    if (newTimers[activeTimerIndex]) {
-                        newTimers[activeTimerIndex] = {
-                            ...newTimers[activeTimerIndex],
-                            duration: newTimers[activeTimerIndex].duration + 1,
-                            lastTick: now
-                        };
-                    }
-                    return newTimers;
-                });
+                // Calculate delta for logging (time passed since last tick)
+                // If lastTick is null (just started), delta is roughly 0 or 1s, but we log based on diff
+                // Actually, for logging, we should log the diff between now and lastTick
+                const lastTick = activeTimer.lastTick || activeTimer.startTime;
+                const deltaSeconds = Math.floor((now - lastTick) / 1000);
+
+                if (deltaSeconds > 0) {
+                    logTime(activeTimer.title, deltaSeconds, 'study');
+
+                    setTimers(prev => {
+                        const newTimers = [...prev];
+                        if (newTimers[activeTimerIndex]) {
+                            newTimers[activeTimerIndex] = {
+                                ...newTimers[activeTimerIndex],
+                                duration: newDuration,
+                                lastTick: now
+                            };
+                        }
+                        return newTimers;
+                    });
+                }
             }
 
             // Check Break Timer
             if (breakTimerRef.current.isRunning) {
-                logTime('Break', 1, 'break');
-                setBreakTimer(prev => ({
-                    ...prev,
-                    duration: prev.duration + 1,
-                    lastTick: now
-                }));
+                const activeBreak = breakTimerRef.current;
+
+                const elapsedSinceStart = Math.floor((now - activeBreak.startTime) / 1000);
+                const newDuration = activeBreak.startDuration + elapsedSinceStart;
+
+                const lastTick = activeBreak.lastTick || activeBreak.startTime;
+                const deltaSeconds = Math.floor((now - lastTick) / 1000);
+
+                if (deltaSeconds > 0) {
+                    logTime('Break', deltaSeconds, 'break');
+
+                    setBreakTimer(prev => ({
+                        ...prev,
+                        duration: newDuration,
+                        lastTick: now
+                    }));
+                }
             }
-        }, 1000);
+        }, 100); // Check every 100ms for smoother updates
 
         return () => clearInterval(interval);
     }, [logTime]);
@@ -109,30 +132,84 @@ export function TimerProvider({ children }) {
     const toggleTimer = useCallback((id) => {
         setTimers(prev => prev.map(t => {
             if (t.id === id) {
-                return { ...t, isRunning: !t.isRunning, lastTick: Date.now() };
+                const now = Date.now();
+                if (t.isRunning) {
+                    // Pause: Clear startTime, keep duration
+                    return { ...t, isRunning: false, startTime: null, lastTick: null };
+                } else {
+                    // Start: Set startTime, snapshot current duration
+                    return {
+                        ...t,
+                        isRunning: true,
+                        startTime: now,
+                        startDuration: t.duration,
+                        lastTick: now
+                    };
+                }
             }
-            return { ...t, isRunning: false }; // Ensure only one runs
+            // Ensure only one runs
+            if (t.isRunning) {
+                return { ...t, isRunning: false, startTime: null, lastTick: null };
+            }
+            return t;
         }));
         // Pause break if focus starts
-        setBreakTimer(prev => ({ ...prev, isRunning: false }));
+        setBreakTimer(prev => {
+            if (prev.isRunning) {
+                return { ...prev, isRunning: false, startTime: null, lastTick: null };
+            }
+            return prev;
+        });
         setMode('focus');
     }, []);
 
     const toggleBreak = useCallback(() => {
-        setBreakTimer(prev => ({ ...prev, isRunning: !prev.isRunning, lastTick: Date.now() }));
+        setBreakTimer(prev => {
+            const now = Date.now();
+            if (prev.isRunning) {
+                return { ...prev, isRunning: false, startTime: null, lastTick: null };
+            } else {
+                return {
+                    ...prev,
+                    isRunning: true,
+                    startTime: now,
+                    startDuration: prev.duration,
+                    lastTick: now
+                };
+            }
+        });
         // Pause all focus timers
-        setTimers(prev => prev.map(t => ({ ...t, isRunning: false })));
+        setTimers(prev => prev.map(t => {
+            if (t.isRunning) {
+                return { ...t, isRunning: false, startTime: null, lastTick: null };
+            }
+            return t;
+        }));
         setMode('break');
     }, []);
 
     const resetTimer = useCallback((id) => {
         setTimers(prev => prev.map(t =>
-            t.id === id ? { ...t, duration: 0, isRunning: false, lastTick: null } : t
+            t.id === id ? {
+                ...t,
+                duration: 0,
+                isRunning: false,
+                startTime: null,
+                startDuration: 0,
+                lastTick: null
+            } : t
         ));
     }, []);
 
     const resetBreak = useCallback(() => {
-        setBreakTimer(prev => ({ ...prev, duration: 0, isRunning: false, lastTick: null }));
+        setBreakTimer(prev => ({
+            ...prev,
+            duration: 0,
+            isRunning: false,
+            startTime: null,
+            startDuration: 0,
+            lastTick: null
+        }));
     }, []);
 
     const addTimer = useCallback((title) => {
@@ -141,6 +218,8 @@ export function TimerProvider({ children }) {
             title,
             duration: 0,
             isRunning: false,
+            startTime: null,
+            startDuration: 0,
             lastTick: null
         }]);
     }, []);
@@ -157,30 +236,33 @@ export function TimerProvider({ children }) {
 
     const switchMode = useCallback((newMode) => {
         setMode(newMode);
-        // Do NOT pause timers when switching modes.
-        // The UI will update to show the relevant timer, but the background state persists.
     }, []);
 
     // -- Recovery Logic (On Mount) --
-    // If we want to support "resume after refresh", we check lastTick.
-    // For now, let's just ensure state is loaded. The simple state persistence handles "refresh" state (isRunning=true),
-    // but the *time passed* while closed won't be accounted for unless we do diffing.
-    // Given the user said "Timer resets... instead of continuing", simple persistence is the first big step.
-    // Let's add simple diffing for robustness.
+    // With timestamp logic, we just need to ensure that if we load a running timer from localStorage,
+    // we update its duration based on the elapsed time since it was saved (or rather, since startTime).
+    // The state initialization already loads 'startTime'.
+    // We just need to trigger an immediate update or let the interval handle it.
+    // However, if the interval takes 1s to fire, we might see a jump.
+    // Let's do a quick sync on mount.
 
     useEffect(() => {
         const now = Date.now();
 
         // Recover Focus Timers
         setTimers(prev => prev.map(t => {
-            if (t.isRunning && t.lastTick) {
-                const diff = Math.floor((now - t.lastTick) / 1000);
-                if (diff > 0 && diff < 86400) { // Sanity check: < 24 hours
-                    // We should also log this "offline" time? 
-                    // Maybe too complex for now. Let's just update the visual duration so it looks correct.
-                    // And log it in one chunk?
-                    logTime(t.title, diff, 'study');
-                    return { ...t, duration: t.duration + diff, lastTick: now };
+            if (t.isRunning && t.startTime) {
+                const elapsedSinceStart = Math.floor((now - t.startTime) / 1000);
+                const newDuration = t.startDuration + elapsedSinceStart;
+
+                // We also need to log the time that passed while the app was closed/inactive
+                // The lastTick gives us when we last updated.
+                const lastTick = t.lastTick || t.startTime;
+                const delta = Math.floor((now - lastTick) / 1000);
+
+                if (delta > 0 && delta < 86400) {
+                    logTime(t.title, delta, 'study');
+                    return { ...t, duration: newDuration, lastTick: now };
                 }
             }
             return t;
@@ -188,11 +270,16 @@ export function TimerProvider({ children }) {
 
         // Recover Break Timer
         setBreakTimer(prev => {
-            if (prev.isRunning && prev.lastTick) {
-                const diff = Math.floor((now - prev.lastTick) / 1000);
-                if (diff > 0 && diff < 86400) {
-                    logTime('Break', diff, 'break');
-                    return { ...prev, duration: prev.duration + diff, lastTick: now };
+            if (prev.isRunning && prev.startTime) {
+                const elapsedSinceStart = Math.floor((now - prev.startTime) / 1000);
+                const newDuration = prev.startDuration + elapsedSinceStart;
+
+                const lastTick = prev.lastTick || prev.startTime;
+                const delta = Math.floor((now - lastTick) / 1000);
+
+                if (delta > 0 && delta < 86400) {
+                    logTime('Break', delta, 'break');
+                    return { ...prev, duration: newDuration, lastTick: now };
                 }
             }
             return prev;

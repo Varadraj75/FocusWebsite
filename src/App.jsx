@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import { StudyProvider } from './context/StudyContext';
 import { TimerProvider } from './context/TimerContext';
 import Insights from './pages/Insights';
+import ThemeChooser from './components/ThemeChooser';
 
 // Protected Route Component
 const PrivateRoute = ({ children }) => {
@@ -47,12 +48,14 @@ function AppRoutes() {
 
 
 
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <StudyProvider>
           <TimerProvider>
+            <ThemeChooser />
             <AppRoutes />
           </TimerProvider>
         </StudyProvider>

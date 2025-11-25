@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, User, Moon, Sun } from 'lucide-react';
+import { LogOut, LayoutDashboard, User } from 'lucide-react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 export default function Layout({ children }) {
@@ -8,23 +8,7 @@ export default function Layout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const [darkMode, setDarkMode] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('theme') === 'dark' ||
-                (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        }
-        return false;
-    });
 
-    useEffect(() => {
-        if (darkMode) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
-    }, [darkMode]);
 
     const handleLogout = async () => {
         try {
@@ -62,15 +46,9 @@ export default function Layout({ children }) {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <button
-                        onClick={() => setDarkMode(!darkMode)}
-                        className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                        title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                    >
-                        {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                    </button>
 
-                    <div className="hidden md:flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 pl-4">
+
+                    <div className="hidden md:flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-300">
                         <User className="w-4 h-4" />
                         <span className="truncate max-w-[150px]">{currentUser?.email}</span>
                     </div>

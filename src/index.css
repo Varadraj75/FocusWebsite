@@ -8,16 +8,121 @@
   }
 }
 
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   @apply bg-slate-300 dark:bg-slate-700 rounded-full;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-400 dark:bg-slate-600;
+}
+
+/* Theme Variables & Liquid Glass Implementation */
+:root {
+  /* Default Light Theme Variables */
+  --bg-base: #ffffff;
+  --text-base: #0f172a;
+  /* slate-900 */
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  /* slate-200 */
+  --accent-primary: #3b82f6;
+  /* blue-500 */
+
+  /* Feature Flags */
+  --enable-theme-macos26: 1;
+}
+
+.theme-dark {
+  --bg-base: #0f172a;
+  /* slate-900 */
+  --text-base: #f1f5f9;
+  /* slate-100 */
+  --card-bg: #1e293b;
+  /* slate-800 */
+  --card-border: #334155;
+  /* slate-700 */
+}
+
+.theme-liquid-glass {
+  --lg-bg: #fff8f4;
+  --lg-glass: rgba(255, 255, 255, 0.55);
+  --lg-glass-strong: rgba(255, 255, 255, 0.72);
+  --lg-accent: #ff7aa2;
+  --lg-accent-2: #ff9966;
+  --lg-text: #2b2b2b;
+
+  --bg-base: var(--lg-bg);
+  --text-base: var(--lg-text);
+  --card-bg: var(--lg-glass);
+  --card-border: rgba(255, 255, 255, 0.2);
+
+  /* Background Image & Gradient */
+  background-image:
+    radial-gradient(circle at center, rgba(255, 140, 176, 0.08), rgba(255, 200, 160, 0.02)),
+    url("/liquid-glass-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* Apply variables to body when theme is active */
+.theme-liquid-glass body {
+  background-color: transparent;
+  /* Let html background show through */
+  color: var(--lg-text);
+}
+
+/* Glass Panel Utility */
+.theme-liquid-glass .glass-panel,
+.theme-liquid-glass .bg-white,
+.theme-liquid-glass .dark\:bg-slate-800 {
+  background: var(--lg-glass) !important;
+  backdrop-filter: blur(12px) saturate(1.05);
+  -webkit-backdrop-filter: blur(12px) saturate(1.05);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+/* Fallback for no backdrop-filter */
+@supports not (backdrop-filter: blur(12px)) {
+
+  .theme-liquid-glass .glass-panel,
+  .theme-liquid-glass .bg-white,
+  .theme-liquid-glass .dark\:bg-slate-800 {
+    background: rgba(255, 255, 255, 0.85) !important;
+  }
+}
+
+
+/* Transitions */
+body {
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* Liquid Glass Theme Overrides for Tailwind Colors */
+.theme-liquid-glass .text-primary {
+  color: var(--lg-accent) !important;
+}
+
+.theme-liquid-glass .bg-primary {
+  background-color: var(--lg-accent) !important;
+}
+
+.theme-liquid-glass .border-primary {
+  border-color: var(--lg-accent) !important;
+}
+
+.theme-liquid-glass .hover\:bg-primary:hover {
+  background-color: var(--lg-accent-2) !important;
 }
