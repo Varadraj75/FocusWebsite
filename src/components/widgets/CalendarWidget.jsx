@@ -79,7 +79,7 @@ export default function CalendarWidget() {
             </div>
 
             <div className="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-medium text-slate-500">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <div key={d}>{d}</div>)}
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={`${d}-${i}`}>{d}</div>)}
             </div>
 
             <div className="grid grid-cols-7 gap-1 mb-6">

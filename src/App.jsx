@@ -5,6 +5,9 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
+import { StudyProvider } from './context/StudyContext';
+import { TimerProvider } from './context/TimerContext';
+import Insights from './pages/Insights';
 
 // Protected Route Component
 const PrivateRoute = ({ children }) => {
@@ -28,15 +31,31 @@ function AppRoutes() {
           </PrivateRoute>
         }
       />
+      <Route
+        path="/insights"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Insights />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
     </Routes>
   );
 }
+
+
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <StudyProvider>
+          <TimerProvider>
+            <AppRoutes />
+          </TimerProvider>
+        </StudyProvider>
       </AuthProvider>
     </Router>
   );
